@@ -1,7 +1,7 @@
 """Amazon MWAA DAG for the AI inference showback walkthrough.
 
-Run ``scripts/render_dag.py`` before deployment. The renderer substitutes the
-two configuration tokens below without putting AWS credentials in this file.
+Replace the two configuration tokens below with your resource values before
+uploading the DAG. Do not put AWS credentials in this file.
 """
 
 from datetime import timedelta
