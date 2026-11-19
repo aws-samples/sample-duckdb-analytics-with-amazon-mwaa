@@ -1,5 +1,6 @@
 INSTALL iceberg;
 LOAD iceberg;
+SET TimeZone = 'UTC';
 
 ATTACH '{{ params.table_bucket_arn }}' AS s3t
   (TYPE iceberg, ENDPOINT_TYPE s3_tables);
@@ -205,8 +206,10 @@ MERGE INTO s3t.ai_showback.daily_application_showback AS target
 USING daily_batch AS source
 ON target.usage_date = source.usage_date
 AND target.application_id = source.application_id
+AND target.team_id IS NOT DISTINCT FROM source.team_id
+AND target.cost_center IS NOT DISTINCT FROM source.cost_center
 AND target.model_id = source.model_id
-AND target.use_case = source.use_case
+AND target.use_case IS NOT DISTINCT FROM source.use_case
 WHEN MATCHED THEN UPDATE SET
     team_id = source.team_id,
     cost_center = source.cost_center,
@@ -284,7 +287,7 @@ MERGE INTO s3t.ai_showback.team_budget_status AS target
 USING budget_batch AS source
 ON target.month_start = source.month_start
 AND target.team_id = source.team_id
-AND target.cost_center = source.cost_center
+AND target.cost_center IS NOT DISTINCT FROM source.cost_center
 WHEN MATCHED THEN UPDATE SET
     monthly_budget_credits = source.monthly_budget_credits,
     consumed_credits = source.consumed_credits,

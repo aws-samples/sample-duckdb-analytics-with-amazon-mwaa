@@ -36,6 +36,7 @@ HOOK_PARAMS = {
 PUBLISH_SQL = """
 INSTALL iceberg;
 LOAD iceberg;
+SET TimeZone = 'UTC';
 
 ATTACH '{{ params.table_bucket_arn }}' AS s3t
   (TYPE iceberg, ENDPOINT_TYPE s3_tables);
@@ -241,8 +242,10 @@ MERGE INTO s3t.ai_showback.daily_application_showback AS target
 USING daily_batch AS source
 ON target.usage_date = source.usage_date
 AND target.application_id = source.application_id
+AND target.team_id IS NOT DISTINCT FROM source.team_id
+AND target.cost_center IS NOT DISTINCT FROM source.cost_center
 AND target.model_id = source.model_id
-AND target.use_case = source.use_case
+AND target.use_case IS NOT DISTINCT FROM source.use_case
 WHEN MATCHED THEN UPDATE SET
     team_id = source.team_id,
     cost_center = source.cost_center,
@@ -320,7 +323,7 @@ MERGE INTO s3t.ai_showback.team_budget_status AS target
 USING budget_batch AS source
 ON target.month_start = source.month_start
 AND target.team_id = source.team_id
-AND target.cost_center = source.cost_center
+AND target.cost_center IS NOT DISTINCT FROM source.cost_center
 WHEN MATCHED THEN UPDATE SET
     monthly_budget_credits = source.monthly_budget_credits,
     consumed_credits = source.consumed_credits,
@@ -348,6 +351,7 @@ WHEN NOT MATCHED THEN INSERT (
 VALIDATE_SQL = """
 INSTALL iceberg;
 LOAD iceberg;
+SET TimeZone = 'UTC';
 
 SELECT version() AS duckdb_version;
 
@@ -408,6 +412,67 @@ SELECT
     total_cost_credits
 FROM validation_metrics;
 
+CREATE OR REPLACE TEMP TABLE summary_validation_metrics AS
+SELECT
+    (SELECT COUNT(*)
+     FROM s3t.ai_showback.daily_application_showback)
+        AS daily_application_rows,
+    (SELECT COUNT(*)
+     FROM s3t.ai_showback.team_budget_status)
+        AS team_budget_rows,
+    (SELECT COUNT(*)
+     FROM (
+         SELECT
+             usage_date,
+             application_id,
+             team_id,
+             cost_center,
+             model_id,
+             use_case
+         FROM s3t.ai_showback.daily_application_showback
+         GROUP BY ALL
+         HAVING COUNT(*) > 1
+     ))
+        AS duplicate_daily_keys,
+    (SELECT COUNT(*)
+     FROM (
+         SELECT
+             month_start,
+             team_id,
+             cost_center
+         FROM s3t.ai_showback.team_budget_status
+         GROUP BY ALL
+         HAVING COUNT(*) > 1
+     ))
+        AS duplicate_budget_keys;
+
+SELECT
+    CASE
+        WHEN daily_application_rows > 0
+            THEN 'PASS'
+        ELSE error('daily_application_showback is empty')
+    END AS daily_row_count_check,
+    CASE
+        WHEN team_budget_rows > 0
+            THEN 'PASS'
+        ELSE error('team_budget_status is empty')
+    END AS budget_row_count_check,
+    CASE
+        WHEN duplicate_daily_keys = 0
+            THEN 'PASS'
+        ELSE error('Duplicate logical keys found in daily_application_showback')
+    END AS daily_key_uniqueness_check,
+    CASE
+        WHEN duplicate_budget_keys = 0
+            THEN 'PASS'
+        ELSE error('Duplicate logical keys found in team_budget_status')
+    END AS budget_key_uniqueness_check,
+    daily_application_rows,
+    team_budget_rows,
+    duplicate_daily_keys,
+    duplicate_budget_keys
+FROM summary_validation_metrics;
+
 SELECT
     allocation_status,
     COUNT(*) AS invocation_count,
@@ -415,6 +480,24 @@ SELECT
 FROM s3t.ai_showback.costed_invocations
 GROUP BY allocation_status
 ORDER BY allocation_status;
+
+SELECT
+    'PASS' AS event_id_uniqueness,
+    'PASS' AS manifest_row_count,
+    'PASS' AS allocation_coverage,
+    'PASS' AS daily_key_uniqueness,
+    'PASS' AS budget_key_uniqueness,
+    actual_unique_events,
+    allocated_events,
+    missing_rate_events,
+    missing_ownership_events,
+    non_success_events,
+    daily_application_rows,
+    team_budget_rows,
+    duplicate_daily_keys,
+    duplicate_budget_keys
+FROM validation_metrics
+CROSS JOIN summary_validation_metrics;
 """
 
 
