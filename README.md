@@ -25,8 +25,7 @@ publish detailed and summary Iceberg tables. `validate_showback` then checks
 the published tables for expected counts, uniqueness, and allocation states.
 DuckDB runs inside the Amazon MWAA worker; it isn't a separate service.
 
-<details>
-<summary><strong>Prerequisites and deployment steps</strong></summary>
+## Prerequisites and deployment steps
 
 ### Before you begin
 
@@ -132,8 +131,6 @@ Both tasks should appear as successful in the Airflow grid or graph view.
 
 Trigger the unchanged DAG a second time. The validation task should succeed
 again without creating duplicate detailed or summary rows.
-
-</details>
 
 ## Clean up
 
