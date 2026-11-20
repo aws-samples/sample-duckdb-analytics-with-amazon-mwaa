@@ -86,13 +86,9 @@ then retrieve its ARN:
 ```bash
 aws s3tables create-table-bucket \
   --name <TABLE-BUCKET> \
-  --region <AWS-REGION>
-
-aws s3tables get-table-bucket \
-  --name <TABLE-BUCKET> \
+  --region <AWS-REGION> \
   --query arn \
-  --output text \
-  --region <AWS-REGION>
+  --output text
 ```
 
 Save the returned ARN for the DAG configuration. It has this format:
