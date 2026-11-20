@@ -1,5 +1,10 @@
+INSTALL aws;
+LOAD aws;
 INSTALL iceberg;
 LOAD iceberg;
+SET memory_limit = '2GB';
+SET threads = 1;
+SET temp_directory = '/tmp/duckdb-ai-showback-spill';
 SET TimeZone = 'UTC';
 
 SELECT version() AS duckdb_version;

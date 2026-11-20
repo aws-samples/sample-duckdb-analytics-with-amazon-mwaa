@@ -1,7 +1,22 @@
 """Amazon MWAA DAG for the AI inference showback walkthrough.
 
-Replace the two configuration tokens below with your resource values before
-uploading the DAG. Do not put AWS credentials in this file.
+Prerequisites:
+- Generate the sample data and upload it under
+  s3://<SOURCE-BUCKET>/ai-showback/.
+- Create an Amazon S3 Tables table bucket in the same AWS Region as the
+  Amazon MWAA environment.
+- Grant the Amazon MWAA execution role read access to the source bucket and
+  permission to create, read, and update tables and table data in the table
+  bucket.
+- Provide network connectivity from Amazon MWAA to Amazon S3, Amazon S3
+  Tables, and the official DuckDB extension repository.
+- Confirm that the built-in duckdb_default connection is available in the
+  Airflow UI under Admin, Connections.
+
+Replace __SOURCE_BUCKET__ and __TABLE_BUCKET_ARN__ below before uploading this
+file to the Amazon MWAA dags/ folder. The publish and validation SQL is already
+embedded in this file, so the standalone SQL files don't need to be uploaded.
+Do not put AWS credentials in this file.
 """
 
 from datetime import timedelta
